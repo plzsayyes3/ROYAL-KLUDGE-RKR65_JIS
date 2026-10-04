@@ -43,7 +43,7 @@ LANG1/LANG2は、この実機のReport 0x06上ではそれぞれ`00 00 00 90` / 
 - `rk65_fn_layer_patch.py` — キャプチャした公式ツールのログをもとに、Fn+V/M/Rを設定する実験用ツール。
 - `tests/` — HIDを送信しない、ペイロード生成・検査のテスト。
 
-通常レイヤーを読み取るプローブは[元のKeyboardリポジトリ](https://github.com/plzsayyes3/Keyboard/tree/main/rk65/tools)にあります。現在のプローブCLIはlayer 0固定ですが、同じ`0x83`読み出し要求のlayer指定を`1`にするとFnレイヤーを読めることを実機で確認しました。ツールへのlayer選択オプション追加は今後の改善候補です。
+通常レイヤーとFnレイヤーを読み取る読み取り専用プローブは[元のKeyboardリポジトリ](https://github.com/plzsayyes3/Keyboard/tree/main/rk65/tools)にあります。`--layer 0`（既定）で通常レイヤー、`--layer 1`でFnレイヤーを読み取り、それぞれレイヤー番号付きのJSONバックアップを保存できます。Fnレイヤーは実機で読み取り、直前に書き込んだFn配列と全504バイトが一致することを確認済みです。
 
 ## 実行方法
 
@@ -56,7 +56,8 @@ python3 -m pip install hidapi
 まず通常レイヤーを読み取り、バックアップを作ります。読み取りだけならキー設定は変更されません。
 
 ```sh
-python3 /path/to/Keyboard/rk65/tools/beiying_read_probe.py --output rk65-backup.json
+python3 /path/to/Keyboard/rk65/tools/beiying_read_probe.py --layer 0 --output rk65-layer0-backup.json
+python3 /path/to/Keyboard/rk65/tools/beiying_read_probe.py --layer 1 --output rk65-layer1-backup.json
 ```
 
 ### 通常レイヤー
