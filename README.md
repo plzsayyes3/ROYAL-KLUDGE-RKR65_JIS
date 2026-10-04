@@ -1,36 +1,36 @@
-# ROYAL KLUDGE R65 JIS — 調査引き継ぎ
+# ROYAL KLUDGE R65 JIS — 調査メモ
 
-最終更新: 2026-10-04
+対象: `Gaming Keyboard`, VID `0x258A`, PID `0x01F7`。このリポジトリでは、ユーザーが取得したWindows公式ツールのHIDログを基に、FnレイヤーのLANG割り当てを調査・変更します。
 
-このリポジトリは、VID `0x258A` / PID `0x01F7` の `Gaming Keyboard`（R65 JIS候補）のキー配列・Fnレイヤーを調査するための記録です。現時点ではFnレイヤーの読み書きプロトコルは未特定です。未検証のFeature Reportを推測で送らないでください。
+## ログから確認できたこと
 
-## 現在の実機状態
+- 設定用HIDはusagePage `0xFF00`, usage `0x0001`。Feature Report IDは`0x06`。
+- 公式ツールはReport 0x06のcommand `0x03`でキー配列を書き込みます。2バイト目がlayer番号で、通常レイヤーは`0`、Fnレイヤーは`1`です。送信ペイロードは519バイト。
+- ユーザーのログでFn+MをAに設定したFnレイヤーペイロードでは、slot 46が`00 00 00 04`。
+- 同じ配列のFn+Vはslot 28で、ログ取得時点の値は`00 00 00 05`（B）。
+- 通常レイヤーslot 41は`00 00 00 8A`、slot 23は`00 00 00 8B`。この実機の配置に従い、slot 41をLANG1、slot 23をLANG2として扱います。
+- 専用ツールでもFnレイヤーを読み戻せないとのユーザー報告があるため、PythonコードもFnレイヤーの読み出し・書き戻し検証は行いません。
 
-Python + HIDAPIで読み取り専用に取得した最後のスナップショットは、`Fn+M` をAに設定したとユーザーが報告した後のものです。
+## Fn+V=LANG2 / Fn+M=LANG1
 
-| キー | slot | 読み取った4バイト |
-|---|---:|---|
-| Space | 35 | `0D 00 00 00` |
-| 物理Fn位置 | 59 | `0D 00 00 00` |
-| M（通常レイヤー） | 46 | `00 00 00 10` |
-| 無変換 | 23 | `00 00 00 8B` |
-| 変換 | 41 | `00 00 00 8A` |
+`rk65_fn_layer_patch.py` は、キャプチャした公式ツールのログから最後の完全なlayer 1ペイロードを取り出し、slot 28をLANG2 (`00 00 00 8B`)、slot 46をLANG1 (`00 00 00 8A`)に置換します。ほかのFnレイヤーバイトは、そのログの値を維持します。
 
-Fn+MをAに設定した後も、読み取れる通常キー配列は直前の状態から差分0でした。Mのslot 46も `0x10`（HID Keyboard M）のままです。Fn+Mの割り当てが別レイヤー／別データ領域にある可能性がありますが、まだ特定できていません。
+既定ではドライランです。
 
-無変換・変換は、現状それぞれ元のJISコード `0x8B` / `0x8A` に戻っています。Spaceと物理Fn位置は同じ4バイト値です。Spaceに `00 00 00 B0` を書く試行ではFn動作が確認できず、Windows公式ツール適用後に上記の値が読めました。
+```sh
+python3 rk65_fn_layer_patch.py /path/to/captured-hid-log.txt
+```
 
-## 確認済みの通信
+実機へ送る場合のみ`--write`を付けます。送信直前に対象デバイスを一意に確認し、確認語句 `WRITE RK65 PID 01F7` の入力を要求します。
 
-- 対象設定interface: usagePage `0xFF00`, usage `0x0001`（interface 1）
-- Feature Report ID `0x06` の読み取り要求 `0x82` で識別応答を取得
-- Feature Report ID `0x06` の要求 `0x83` で512バイトのキー配列応答を取得（先頭8バイトは応答ヘッダー）
-- Report `0x06` のコマンド `0x03` で通常配列を書き換え、同じ要求で全配列の再読取一致を確認した実績あり
-- Fn+M=Aの設定前後で `0x83` 応答が変化しないため、この読み取りだけではFnレイヤーの内容を確認できない
-- descriptorで確認できたFeature Report IDsは `0x05` と `0x06`。`0x05` 読み取りは失敗した
+```sh
+python3 rk65_fn_layer_patch.py /path/to/captured-hid-log.txt --write
+```
 
-## 次に必要な調査
+重要: Fnレイヤー全体を書き込む形式です。元にするログ取得後に公式ツールでFnレイヤーを編集していると、その後の変更はログ時点の配列に戻る可能性があります。書き込み後の読み戻し・成功確認はできません。`--write`は十分に理解したうえで明示的に実行してください。
 
-Fn+M=AをWindows公式ツールで設定する際のHID通信を取得し、Fnレイヤー用のコマンド／データ位置を特定します。可能ならWindows上でUSBPcap + Wireshark等を使い、設定前後のFeature Report送信を記録してください。Fn+MをAからLANG1へ変更するPython実装は、この通信形式が分かってから行います。
+このツールのオフラインテスト:
 
-現行の読み取り専用プローブと通常配列の実験コードは、元の[Keyboardリポジトリ](https://github.com/plzsayyes3/Keyboard/tree/main/rk65/tools)にあります。Fnレイヤー書き込み機能はまだありません。
+```sh
+python3 -m unittest discover -s tests -v
+```
