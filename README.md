@@ -8,7 +8,8 @@
 - 公式ツールはReport 0x06のcommand `0x03`でキー配列を書き込みます。2バイト目がlayer番号で、通常レイヤーは`0`、Fnレイヤーは`1`です。送信ペイロードは519バイト。
 - ユーザーのログでFn+MをAに設定したFnレイヤーペイロードでは、slot 46が`00 00 00 04`。
 - 同じ配列のFn+Vはslot 28で、ログ取得時点の値は`00 00 00 05`（B）。
-- 通常レイヤーslot 41は`00 00 00 8A`、slot 23は`00 00 00 8B`。この実機の配置に従い、slot 41をLANG1、slot 23をLANG2として扱います。
+- 書き込み前の通常レイヤーslot 41=`00 00 00 8A`、slot 23=`00 00 00 8B`は変換・無変換の旧キーコードであり、LANG1/LANG2としては反応しませんでした。
+- LANG1/LANG2はアプリのファームウェアコード`0x9000`/`0x9100`をReport 0x06上で`00 00 00 90`/`00 00 00 91`として格納します。
 - 専用ツールでもFnレイヤーを読み戻せないとのユーザー報告があるため、PythonコードもFnレイヤーの読み出し・書き戻し検証は行いません。
 
 ## Fn+V=LANG2 / Fn+M=LANG1
@@ -34,3 +35,14 @@ python3 rk65_fn_layer_patch.py /path/to/captured-hid-log.txt --write
 ```sh
 python3 -m unittest discover -s tests -v
 ```
+
+## 通常レイヤーのスペース隣接キー
+
+`rk65_layer0_language_patch.py` は、読み取り専用プローブで作ったJSONバックアップを元に、slot 23（Space左）をLANG2、slot 41（Space右）をLANG1にします。その他の通常レイヤー配列を保持し、slot 23/41が想定した旧値でない場合は中止します。
+
+```sh
+python3 rk65_layer0_language_patch.py /path/to/rk65-backup.json
+python3 rk65_layer0_language_patch.py /path/to/rk65-backup.json --write
+```
+
+本体への送信後は、通常レイヤーを読み取り専用プローブで再読取できます。今回の実機書き込みではslot 23=`00 00 00 91`、slot 41=`00 00 00 90`を確認済みです。

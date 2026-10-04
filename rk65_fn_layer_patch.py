@@ -146,7 +146,10 @@ def main() -> int:
         if sent != REPORT_LENGTH + 1:
             print(f"WRITE FAILED: short HID transfer ({sent}/{REPORT_LENGTH + 1} bytes)", file=sys.stderr)
             return 5
-        print(f"WRITE SENT: layer=1 slot={M_SLOT} LANG1; bytes={sent}; no readback performed")
+        print(
+            f"WRITE SENT: layer=1 slot={V_SLOT} LANG2, slot={M_SLOT} LANG1; "
+            f"bytes={sent}; no readback performed"
+        )
         return 0
     except Exception as exc:  # HIDAPI errors vary by platform.
         print(f"WRITE FAILED: {type(exc).__name__}: {exc}", file=sys.stderr)
