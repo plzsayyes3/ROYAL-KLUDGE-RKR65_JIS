@@ -2,6 +2,8 @@
 
 対象: `Gaming Keyboard`, VID `0x258A`, PID `0x01F7`。このリポジトリでは、ユーザーが取得したWindows公式ツールのHIDログを基に、FnレイヤーのLANG割り当てを調査・変更します。
 
+現在の2層バックアップ: [rk65-r65-01f7-two-layer-backup-20261004.json](rk65-r65-01f7-two-layer-backup-20261004.json)。layer 0は実機読取、layer 1は公式ツールのキャプチャとユーザー確認済みの書き込み値から復元したデータです。Fnレイヤーを読取済みとは扱わないでください。
+
 ## ログから確認できたこと
 
 - 設定用HIDはusagePage `0xFF00`, usage `0x0001`。Feature Report IDは`0x06`。
