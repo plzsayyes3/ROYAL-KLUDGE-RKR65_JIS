@@ -22,6 +22,7 @@ REPORT_LENGTH = 519
 LAYER_HEADER_LENGTH = 7
 M_SLOT = 46
 V_SLOT = 28
+R_SLOT = 26
 MUHENKAN_SLOT = 23
 LANG1_SLOT = 41
 LANG1 = bytes([0x00, 0x00, 0x00, 0x90])
@@ -30,6 +31,8 @@ CAPTURED_MUHENKAN = bytes([0x00, 0x00, 0x00, 0x8B])
 CAPTURED_HENKAN = bytes([0x00, 0x00, 0x00, 0x8A])
 FN_M_A = bytes([0x00, 0x00, 0x00, 0x04])
 FN_V_B = bytes([0x00, 0x00, 0x00, 0x05])
+FN_R_EMPTY = bytes(4)
+COMMAND_ENTER = bytes([0x00, 0x08, 0x00, 0x28])
 FEATURE_LINE = re.compile(r"SetFeature\s*\[519\]\s*bytes\s*->\s*([\d,\s]+)")
 
 
@@ -109,7 +112,16 @@ def main() -> int:
                 "Captured Fn+V slot 28 is not B (00 00 00 05); "
                 f"found {old_v.hex(' ').upper()}, refusing to patch a mismatched snapshot"
             )
-        patched = build_layer_write(layer1, {M_SLOT: LANG1, V_SLOT: LANG2})
+        old_r = layer1[_slot_offset(R_SLOT) : _slot_offset(R_SLOT) + 4]
+        if old_r != FN_R_EMPTY:
+            raise ValueError(
+                "Captured Fn+R slot 26 is not empty; "
+                f"found {old_r.hex(' ').upper()}, refusing to overwrite it"
+            )
+        patched = build_layer_write(
+            layer1,
+            {M_SLOT: LANG1, V_SLOT: LANG2, R_SLOT: COMMAND_ENTER},
+        )
     except (OSError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
@@ -119,6 +131,7 @@ def main() -> int:
     print("target: Gaming Keyboard VID=0x258A PID=0x01F7, layer=1")
     print(f"Fn+M slot {M_SLOT}: {old.hex(' ').upper()} -> {LANG1.hex(' ').upper()} (LANG1)")
     print(f"Fn+V slot {V_SLOT}: {old_v.hex(' ').upper()} -> {LANG2.hex(' ').upper()} (LANG2)")
+    print(f"Fn+R slot {R_SLOT}: {old_r.hex(' ').upper()} -> {COMMAND_ENTER.hex(' ').upper()} (Command+Enter)")
     print("other Fn-layer bytes: unchanged from the latest captured layer-1 payload")
     print("NOTE: the full Fn layer comes from this log; changes made after capture may be overwritten.")
     print(f"patched-slot-offset: {offset}; payload-length: {len(patched)}")
@@ -126,7 +139,7 @@ def main() -> int:
         print("dry-run only; no device was opened and no HID reports were sent")
         return 0
 
-    phrase = "WRITE RK65 PID 01F7"
+    phrase = "WRITE RK65 FN CHORDS"
     print(f"This sends one complete layer-1 write. Type exactly: {phrase}")
     if input("> ").strip() != phrase:
         print("cancelled; no HID reports sent")
@@ -155,7 +168,8 @@ def main() -> int:
             print(f"WRITE FAILED: short HID transfer ({sent}/{REPORT_LENGTH + 1} bytes)", file=sys.stderr)
             return 5
         print(
-            f"WRITE SENT: layer=1 slot={V_SLOT} LANG2, slot={M_SLOT} LANG1; "
+            f"WRITE SENT: layer=1 slot={V_SLOT} LANG2, slot={M_SLOT} LANG1, "
+            f"slot={R_SLOT} Command+Enter; "
             f"bytes={sent}; no readback performed"
         )
         return 0

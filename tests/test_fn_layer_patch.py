@@ -4,6 +4,8 @@ from rk65_fn_layer_patch import (
     LANG1,
     LANG2,
     M_SLOT,
+    COMMAND_ENTER,
+    R_SLOT,
     V_SLOT,
     REPORT_LENGTH,
     build_layer_write,
@@ -40,12 +42,17 @@ class FnLayerPatchTests(unittest.TestCase):
                 .split(","),
             )
         )
-        result = build_layer_write(source, {M_SLOT: LANG1, V_SLOT: LANG2})
+        result = build_layer_write(
+            source,
+            {M_SLOT: LANG1, V_SLOT: LANG2, R_SLOT: COMMAND_ENTER},
+        )
         offset = 7 + M_SLOT * 4
         self.assertEqual(result[:7], bytes([3, 1, 0, 1, 0, 0xF8, 1]))
         self.assertEqual(result[offset : offset + 4], LANG1)
         v_offset = 7 + V_SLOT * 4
         self.assertEqual(result[v_offset : v_offset + 4], LANG2)
+        r_offset = 7 + R_SLOT * 4
+        self.assertEqual(result[r_offset : r_offset + 4], COMMAND_ENTER)
         self.assertEqual(result[7 + 2 * 4 : 11 + 2 * 4], bytes([1, 2, 3, 4]))
 
     def test_rejects_missing_layer(self):
