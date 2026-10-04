@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Patch Fn+M to the LANG1 code using a captured RK65 HID write log.
+"""Patch Fn+V/M to LANG2/LANG1 using a captured RK65 HID write log.
 
 The program does not attempt to read the Fn layer from the keyboard. It patches
 the most recent complete layer-1 SetFeature payload in the supplied log. By
@@ -24,9 +24,12 @@ M_SLOT = 46
 V_SLOT = 28
 MUHENKAN_SLOT = 23
 LANG1_SLOT = 41
-LANG1 = bytes([0x00, 0x00, 0x00, 0x8A])
-LANG2 = bytes([0x00, 0x00, 0x00, 0x8B])
+LANG1 = bytes([0x00, 0x00, 0x00, 0x90])
+LANG2 = bytes([0x00, 0x00, 0x00, 0x91])
+CAPTURED_MUHENKAN = bytes([0x00, 0x00, 0x00, 0x8B])
+CAPTURED_HENKAN = bytes([0x00, 0x00, 0x00, 0x8A])
 FN_M_A = bytes([0x00, 0x00, 0x00, 0x04])
+FN_V_B = bytes([0x00, 0x00, 0x00, 0x05])
 FEATURE_LINE = re.compile(r"SetFeature\s*\[519\]\s*bytes\s*->\s*([\d,\s]+)")
 
 
@@ -84,14 +87,14 @@ def main() -> int:
         layer0 = extract_latest_layer(log_text, 0)
         base_lang2 = layer0[_slot_offset(MUHENKAN_SLOT) : _slot_offset(MUHENKAN_SLOT) + 4]
         base_lang1 = layer0[_slot_offset(LANG1_SLOT) : _slot_offset(LANG1_SLOT) + 4]
-        if base_lang2 != LANG2:
+        if base_lang2 != CAPTURED_MUHENKAN:
             raise ValueError(
-                "Captured layer-0 slot 23 is not the expected LANG2 code "
+                "Captured layer-0 slot 23 is not the expected original Muhenkan code "
                 f"00 00 00 8B (found {base_lang2.hex(' ').upper()}); refusing to guess"
             )
-        if base_lang1 != LANG1:
+        if base_lang1 != CAPTURED_HENKAN:
             raise ValueError(
-                "Captured layer-0 slot 41 is not the expected LANG1 code "
+                "Captured layer-0 slot 41 is not the expected original Henkan code "
                 f"00 00 00 8A (found {base_lang1.hex(' ').upper()}); refusing to guess"
             )
         old = layer1[_slot_offset(M_SLOT) : _slot_offset(M_SLOT) + 4]
@@ -101,6 +104,11 @@ def main() -> int:
                 f"found {old.hex(' ').upper()}, refusing to patch a mismatched snapshot"
             )
         old_v = layer1[_slot_offset(V_SLOT) : _slot_offset(V_SLOT) + 4]
+        if old_v != FN_V_B:
+            raise ValueError(
+                "Captured Fn+V slot 28 is not B (00 00 00 05); "
+                f"found {old_v.hex(' ').upper()}, refusing to patch a mismatched snapshot"
+            )
         patched = build_layer_write(layer1, {M_SLOT: LANG1, V_SLOT: LANG2})
     except (OSError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
