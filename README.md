@@ -46,3 +46,12 @@ python3 rk65_layer0_language_patch.py /path/to/rk65-backup.json --write
 ```
 
 本体への送信後は、通常レイヤーを読み取り専用プローブで再読取できます。今回の実機書き込みではslot 23=`00 00 00 91`、slot 41=`00 00 00 90`を確認済みです。
+
+## L右隣を長音符キーにする
+
+`rk65_layer0_prolonged_sound.py` はslot 63（L右隣の`; / +`キー）を標準HIDハイフンusage `0x2D`に変更します。macOS日本語入力で長音符「ー」として使うための割り当てです。JSONバックアップの値が想定どおり`;` (`0x33`) の場合だけ書き込みます。他の通常レイヤー配列は保持します。今回の実機では送信後にslot 63=`00 00 00 2D`を読み取り確認し、slot 23/41のLANG2/LANG1も維持されていることを確認しました。
+
+```sh
+python3 rk65_layer0_prolonged_sound.py /path/to/rk65-backup.json
+python3 rk65_layer0_prolonged_sound.py /path/to/rk65-backup.json --write
+```
